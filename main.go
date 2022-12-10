@@ -8,6 +8,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/golang-demos/chalk"
 )
 
 type Conn struct {
@@ -18,6 +21,7 @@ const (
 	OP_FOLDER = byte(iota)
 	OP_FILE   = byte(iota)
 	OP_DATA   = byte(iota)
+	OP_FINISH = byte(iota)
 )
 
 var cwd, _ = os.Getwd()
@@ -56,15 +60,34 @@ func (c *Conn) ParseHeader() (byte, uint32, error) {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: fileshare [send|receive] [...files]")
+		fmt.Println("Usage:")
+		fmt.Println(" fileshare send [...files]")
+		fmt.Println(" fileshare recv [code] [output]")
 		return
 	}
 
 	cmd := os.Args[1]
-	if cmd == "send" {
+	if cmd == "send" || cmd == "s" {
 		l, err := net.Listen("tcp", ":1234")
 		if err != nil {
 			panic(err)
+		}
+
+		// print local ip address
+		addrs, err := net.InterfaceAddrs()
+		if err != nil {
+			panic(err)
+		}
+
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				if ipnet.IP.To4() != nil {
+					fmt.Printf(
+						"on the receiver, run %sfileshare receive %s [output]%s\n",
+						chalk.Bold(), strings.TrimPrefix(ipnet.IP.String(), "192.168."), chalk.Reset(),
+					)
+				}
+			}
 		}
 
 		for {
@@ -129,13 +152,20 @@ func main() {
 						}
 					}
 				}
+
+				conn.WriteHeader(OP_FINISH, 0)
 			}(conn)
 		}
-	} else if cmd == "receive" {
-		output := os.Args[2]
+	} else if cmd == "receive" || cmd == "recv" || cmd == "r" {
+		ip := os.Args[2]
+		if strings.Count(ip, ".") != 3 {
+			ip = "192.168." + ip
+		}
+
+		output := os.Args[3]
 		os.MkdirAll(output, os.ModePerm)
 
-		netConn, err := net.Dial("tcp", "localhost:1234")
+		netConn, err := net.Dial("tcp", ip+":1234")
 		if err != nil {
 			panic(err)
 		}
@@ -181,6 +211,10 @@ func main() {
 				fmt.Println("data", length, "bytes")
 				io.CopyN(dst, conn, int64(length))
 				fmt.Println("done")
+
+			case OP_FINISH:
+				fmt.Println("finished")
+				return
 			}
 		}
 	}
