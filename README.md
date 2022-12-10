@@ -1,3 +1,7 @@
 stupid thing i made for some reason
 
-wip
+```
+Usage:
+ fileshare send [...files]
+ fileshare recv [code] [output]
+```
