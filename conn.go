@@ -18,7 +18,7 @@ func (c *Conn) WriteHeader(op byte, l uint64) error {
 		return err
 	}
 
-	lbuf := make([]byte, 4)
+	lbuf := make([]byte, 8)
 	binary.BigEndian.PutUint64(lbuf, l)
 	if _, err := c.Write(lbuf); err != nil {
 		return err
@@ -33,7 +33,7 @@ func (c *Conn) ParseHeader() (byte, uint64, error) {
 		return 0, 0, err
 	}
 
-	header := make([]byte, 4)
+	header := make([]byte, 8)
 	if _, err := c.Read(header); err != nil {
 		return 0, 0, err
 	}
