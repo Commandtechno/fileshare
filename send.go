@@ -51,10 +51,10 @@ func send(files []string) {
 						}
 
 						if entry.IsDir() {
-							conn.WriteHeader(OP_FOLDER, uint32(len(path)))
+							conn.WriteHeader(OP_FOLDER, uint64(len(path)))
 							conn.WriteString(path)
 						} else {
-							conn.WriteHeader(OP_FILE, uint32(len(path)))
+							conn.WriteHeader(OP_FILE, uint64(len(path)))
 							conn.WriteString(path)
 
 							info, err := entry.Info()
@@ -62,7 +62,7 @@ func send(files []string) {
 								panic(err)
 							}
 
-							conn.WriteHeader(OP_DATA, uint32(info.Size()))
+							conn.WriteHeader(OP_DATA, uint64(info.Size()))
 							file, err := os.Open(path)
 							if err != nil {
 								panic(err)
@@ -75,10 +75,10 @@ func send(files []string) {
 						return nil
 					})
 				} else {
-					conn.WriteHeader(OP_FILE, uint32(len(path)))
+					conn.WriteHeader(OP_FILE, uint64(len(path)))
 					conn.WriteString(path)
 
-					conn.WriteHeader(OP_DATA, uint32(info.Size()))
+					conn.WriteHeader(OP_DATA, uint64(info.Size()))
 					file, err := os.Open(path)
 					if err != nil {
 						panic(err)
