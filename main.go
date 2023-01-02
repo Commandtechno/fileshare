@@ -22,9 +22,6 @@ func main() {
 		return
 	}
 
-	i, e := os.Stat(os.Args[2])
-	fmt.Println(uint64(i.Size()), e)
-
 	switch os.Args[1] {
 	case "send", "s":
 		if len(os.Args) < 3 {
