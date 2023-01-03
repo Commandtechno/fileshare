@@ -45,18 +45,23 @@ func send(files []string) {
 					panic(err)
 				}
 
+				parentDir, dir := filepath.Split(filepath.Clean(path))
+				if parentDir == "" {
+					parentDir = "."
+				}
+
 				if info.IsDir() {
-					fs.WalkDir(os.DirFS(cwd), filepath.Clean(path), func(path string, entry fs.DirEntry, err error) error {
+					fs.WalkDir(os.DirFS(parentDir), dir, func(path string, entry fs.DirEntry, err error) error {
 						if err != nil {
 							panic(err)
 						}
 
 						if entry.IsDir() {
 							conn.WriteHeader(OP_FOLDER, uint64(len(path)))
-							conn.WriteString(filepath.ToSlash(path))
+							conn.WriteString(path)
 						} else {
 							conn.WriteHeader(OP_FILE, uint64(len(path)))
-							conn.WriteString(filepath.ToSlash(path))
+							conn.WriteString(path)
 
 							info, err := entry.Info()
 							if err != nil {
@@ -64,7 +69,7 @@ func send(files []string) {
 							}
 
 							conn.WriteHeader(OP_DATA, uint64(info.Size()))
-							file, err := os.Open(path)
+							file, err := os.Open(filepath.Join(parentDir, path))
 							if err != nil {
 								panic(err)
 							}
@@ -76,8 +81,8 @@ func send(files []string) {
 						return nil
 					})
 				} else {
-					conn.WriteHeader(OP_FILE, uint64(len(path)))
-					conn.WriteString(path)
+					conn.WriteHeader(OP_FILE, uint64(len(info.Name())))
+					conn.WriteString(info.Name())
 
 					conn.WriteHeader(OP_DATA, uint64(info.Size()))
 					file, err := os.Open(path)
