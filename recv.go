@@ -7,7 +7,33 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/dustin/go-humanize"
+	"github.com/golang-demos/chalk"
 )
+
+type WriteCounter struct {
+	Total     uint64
+	Completed uint64
+	LastPrint time.Time
+}
+
+func (wc *WriteCounter) Write(p []byte) (int, error) {
+	n := len(p)
+	wc.Completed += uint64(n)
+	wc.PrintProgress()
+	return n, nil
+}
+
+func (wc *WriteCounter) PrintProgress() {
+	if time.Since(wc.LastPrint) < 100*time.Millisecond {
+		return
+	}
+
+	wc.LastPrint = time.Now()
+	fmt.Printf("\033[2K\rDownloading... %s%s/%s%s", chalk.Bold(), humanize.Bytes(wc.Completed), humanize.Bytes(wc.Total), chalk.Reset())
+}
 
 func recv(ip string, output string) {
 	if strings.Count(ip, ".") != 3 {
@@ -40,7 +66,10 @@ func recv(ip string, output string) {
 				panic(err)
 			}
 
-			os.Mkdir(filepath.Join(output, string(folder)), os.ModePerm)
+			split := strings.Split(string(folder), "/")
+			fmt.Println(strings.Repeat("    ", len(split)-1), "-", split[len(split)-1])
+
+			os.Mkdir(filepath.Join(output, filepath.FromSlash(string(folder))), os.ModePerm)
 
 		case OP_FILE:
 			file := make([]byte, length)
@@ -49,7 +78,10 @@ func recv(ip string, output string) {
 				panic(err)
 			}
 
-			f, err := os.Create(filepath.Join(output, string(file)))
+			split := strings.Split(string(file), "/")
+			fmt.Println(strings.Repeat("    ", len(split)-1), "-", split[len(split)-1])
+
+			f, err := os.Create(filepath.Join(output, filepath.FromSlash(string(file))))
 			if err != nil {
 				panic(err)
 			}
@@ -57,7 +89,14 @@ func recv(ip string, output string) {
 			dst = f
 
 		case OP_DATA:
-			io.CopyN(dst, conn, int64(length))
+			counter := &WriteCounter{
+				Total:     uint64(length),
+				Completed: 0,
+				LastPrint: time.Now(),
+			}
+
+			io.CopyN(dst, io.TeeReader(conn, counter), int64(length))
+			fmt.Print("\033[2K\r")
 
 		case OP_FINISH:
 			fmt.Println("Finished")

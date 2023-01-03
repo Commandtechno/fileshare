@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/golang-demos/chalk"
@@ -45,17 +46,17 @@ func send(files []string) {
 				}
 
 				if info.IsDir() {
-					fs.WalkDir(os.DirFS(cwd), path, func(path string, entry fs.DirEntry, err error) error {
+					fs.WalkDir(os.DirFS(cwd), filepath.Clean(path), func(path string, entry fs.DirEntry, err error) error {
 						if err != nil {
 							panic(err)
 						}
 
 						if entry.IsDir() {
 							conn.WriteHeader(OP_FOLDER, uint64(len(path)))
-							conn.WriteString(path)
+							conn.WriteString(filepath.ToSlash(path))
 						} else {
 							conn.WriteHeader(OP_FILE, uint64(len(path)))
-							conn.WriteString(path)
+							conn.WriteString(filepath.ToSlash(path))
 
 							info, err := entry.Info()
 							if err != nil {
